@@ -11,7 +11,7 @@ import (
 	"github.com/go-kratos/kratos/v2/config"
 )
 
-// Option is etcd config option.
+// Option is consul config option.
 type Option func(o *options)
 
 type options struct {
@@ -28,9 +28,9 @@ func WithContext(ctx context.Context) Option {
 
 // WithPath is config path
 func WithPath(p string) Option {
-	return Option(func(o *options) {
+	return func(o *options) {
 		o.path = p
-	})
+	}
 }
 
 type source struct {

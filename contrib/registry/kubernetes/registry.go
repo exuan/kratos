@@ -91,8 +91,11 @@ type Registry struct {
 }
 
 // NewRegistry is used to initialize the Registry
-func NewRegistry(clientSet *kubernetes.Clientset) *Registry {
-	informerFactory := informers.NewSharedInformerFactory(clientSet, time.Minute*10)
+func NewRegistry(clientSet *kubernetes.Clientset, namespace string) *Registry {
+	if strings.EqualFold(namespace, "") {
+		namespace = metav1.NamespaceAll
+	}
+	informerFactory := informers.NewSharedInformerFactoryWithOptions(clientSet, time.Minute*10, informers.WithNamespace(namespace))
 	podInformer := informerFactory.Core().V1().Pods().Informer()
 	podLister := informerFactory.Core().V1().Pods().Lister()
 	return &Registry{
@@ -151,14 +154,14 @@ func (s *Registry) Register(ctx context.Context, service *registry.ServiceInstan
 }
 
 // Deregister the registration.
-func (s *Registry) Deregister(ctx context.Context, service *registry.ServiceInstance) error {
+func (s *Registry) Deregister(ctx context.Context, _ *registry.ServiceInstance) error {
 	return s.Register(ctx, &registry.ServiceInstance{
 		Metadata: map[string]string{},
 	})
 }
 
 // GetService return the service instances in memory according to the service name.
-func (s *Registry) GetService(ctx context.Context, name string) ([]*registry.ServiceInstance, error) {
+func (s *Registry) GetService(_ context.Context, name string) ([]*registry.ServiceInstance, error) {
 	pods, err := s.podLister.List(labels.SelectorFromSet(map[string]string{
 		LabelsKeyServiceName: name,
 	}))
@@ -205,13 +208,13 @@ func (s *Registry) Watch(ctx context.Context, name string) (registry.Watcher, er
 			}
 		},
 		Handler: cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
+			AddFunc: func(interface{}) {
 				s.sendLatestInstances(ctx, name, announcement)
 			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
+			UpdateFunc: func(interface{}, interface{}) {
 				s.sendLatestInstances(ctx, name, announcement)
 			},
-			DeleteFunc: func(obj interface{}) {
+			DeleteFunc: func(interface{}) {
 				s.sendLatestInstances(ctx, name, announcement)
 			},
 		},

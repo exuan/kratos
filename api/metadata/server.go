@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	dpb "google.golang.org/protobuf/types/descriptorpb"
 
@@ -97,7 +98,7 @@ func (s *Server) load() error {
 }
 
 // ListServices return all services
-func (s *Server) ListServices(ctx context.Context, in *ListServicesRequest) (*ListServicesReply, error) {
+func (s *Server) ListServices(_ context.Context, _ *ListServicesRequest) (*ListServicesReply, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if err := s.load(); err != nil {
@@ -115,11 +116,13 @@ func (s *Server) ListServices(ctx context.Context, in *ListServicesRequest) (*Li
 			reply.Methods = append(reply.Methods, fmt.Sprintf("/%s/%s", name, method))
 		}
 	}
+	sort.Strings(reply.Services)
+	sort.Strings(reply.Methods)
 	return reply, nil
 }
 
 // GetServiceDesc return service meta by name
-func (s *Server) GetServiceDesc(ctx context.Context, in *GetServiceDescRequest) (*GetServiceDescReply, error) {
+func (s *Server) GetServiceDesc(_ context.Context, in *GetServiceDescRequest) (*GetServiceDescReply, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if err := s.load(); err != nil {
@@ -145,7 +148,7 @@ func parseMetadata(meta interface{}) (*dpb.FileDescriptorProto, error) {
 	if enc, ok := meta.([]byte); ok {
 		return decodeFileDesc(enc)
 	}
-	return nil, fmt.Errorf("proto not sumpport metadata: %v", meta)
+	return nil, fmt.Errorf("proto does not support metadata: %v", meta)
 }
 
 // decodeFileDesc does decompression and unmarshalling on the given

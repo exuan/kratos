@@ -66,9 +66,11 @@ func TestEndpoint(t *testing.T) {
 }
 
 func TestContext(t *testing.T) {
-	type ctxKey = struct{}
+	type ctxKey struct {
+		Key string
+	}
 	o := &options{}
-	v := context.WithValue(context.TODO(), ctxKey{}, "b")
+	v := context.WithValue(context.TODO(), ctxKey{Key: "context"}, "b")
 	Context(v)(o)
 	if !reflect.DeepEqual(v, o.ctx) {
 		t.Fatalf("o.ctx:%s is not equal to v:%s", o.ctx, v)
@@ -86,8 +88,8 @@ func TestLogger(t *testing.T) {
 
 type mockServer struct{}
 
-func (m *mockServer) Start(ctx context.Context) error { return nil }
-func (m *mockServer) Stop(ctx context.Context) error  { return nil }
+func (m *mockServer) Start(_ context.Context) error { return nil }
+func (m *mockServer) Stop(_ context.Context) error  { return nil }
 
 func TestServer(t *testing.T) {
 	o := &options{}
@@ -118,11 +120,11 @@ func TestSignal(t *testing.T) {
 
 type mockRegistrar struct{}
 
-func (m *mockRegistrar) Register(ctx context.Context, service *registry.ServiceInstance) error {
+func (m *mockRegistrar) Register(_ context.Context, _ *registry.ServiceInstance) error {
 	return nil
 }
 
-func (m *mockRegistrar) Deregister(ctx context.Context, service *registry.ServiceInstance) error {
+func (m *mockRegistrar) Deregister(_ context.Context, _ *registry.ServiceInstance) error {
 	return nil
 }
 
@@ -151,4 +153,40 @@ func TestStopTimeout(t *testing.T) {
 	if !reflect.DeepEqual(v, o.stopTimeout) {
 		t.Fatal("o.stopTimeout is not equal to v")
 	}
+}
+
+func TestBeforeStart(t *testing.T) {
+	o := &options{}
+	v := func(_ context.Context) error {
+		t.Log("BeforeStart...")
+		return nil
+	}
+	BeforeStart(v)(o)
+}
+
+func TestBeforeStop(t *testing.T) {
+	o := &options{}
+	v := func(_ context.Context) error {
+		t.Log("BeforeStop...")
+		return nil
+	}
+	BeforeStop(v)(o)
+}
+
+func TestAfterStart(t *testing.T) {
+	o := &options{}
+	v := func(_ context.Context) error {
+		t.Log("AfterStart...")
+		return nil
+	}
+	AfterStart(v)(o)
+}
+
+func TestAfterStop(t *testing.T) {
+	o := &options{}
+	v := func(_ context.Context) error {
+		t.Log("AfterStop...")
+		return nil
+	}
+	AfterStop(v)(o)
 }

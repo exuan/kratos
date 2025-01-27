@@ -57,11 +57,11 @@ func Test_WithGroup(t *testing.T) {
 	}
 }
 
-func Test_Server(t *testing.T) {
-	nextValid := func(ctx context.Context, req interface{}) (interface{}, error) {
+func TestServer(_ *testing.T) {
+	nextValid := func(context.Context, interface{}) (interface{}, error) {
 		return "Hello valid", nil
 	}
-	nextInvalid := func(ctx context.Context, req interface{}) (interface{}, error) {
+	nextInvalid := func(context.Context, interface{}) (interface{}, error) {
 		return nil, kratoserrors.InternalServer("", "")
 	}
 

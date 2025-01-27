@@ -9,15 +9,14 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-kratos/kratos/v2/internal/endpoint"
-	"github.com/go-kratos/kratos/v2/internal/matcher"
+	"github.com/gorilla/mux"
 
+	"github.com/go-kratos/kratos/v2/internal/endpoint"
 	"github.com/go-kratos/kratos/v2/internal/host"
+	"github.com/go-kratos/kratos/v2/internal/matcher"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/transport"
-
-	"github.com/gorilla/mux"
 )
 
 var (
@@ -43,6 +42,13 @@ func Address(addr string) ServerOption {
 	}
 }
 
+// Endpoint with server address.
+func Endpoint(endpoint *url.URL) ServerOption {
+	return func(s *Server) {
+		s.endpoint = endpoint
+	}
+}
+
 // Timeout with server timeout.
 func Timeout(timeout time.Duration) ServerOption {
 	return func(s *Server) {
@@ -52,8 +58,8 @@ func Timeout(timeout time.Duration) ServerOption {
 
 // Logger with server logger.
 // Deprecated: use global logger instead.
-func Logger(logger log.Logger) ServerOption {
-	return func(s *Server) {}
+func Logger(log.Logger) ServerOption {
+	return func(*Server) {}
 }
 
 // Middleware with service middleware option.
@@ -70,10 +76,24 @@ func Filter(filters ...FilterFunc) ServerOption {
 	}
 }
 
+// RequestVarsDecoder with request decoder.
+func RequestVarsDecoder(dec DecodeRequestFunc) ServerOption {
+	return func(o *Server) {
+		o.decVars = dec
+	}
+}
+
+// RequestQueryDecoder with request decoder.
+func RequestQueryDecoder(dec DecodeRequestFunc) ServerOption {
+	return func(o *Server) {
+		o.decQuery = dec
+	}
+}
+
 // RequestDecoder with request decoder.
 func RequestDecoder(dec DecodeRequestFunc) ServerOption {
 	return func(o *Server) {
-		o.dec = dec
+		o.decBody = dec
 	}
 }
 
@@ -114,6 +134,25 @@ func Listener(lis net.Listener) ServerOption {
 	}
 }
 
+// PathPrefix with mux's PathPrefix, router will be replaced by a subrouter that start with prefix.
+func PathPrefix(prefix string) ServerOption {
+	return func(s *Server) {
+		s.router = s.router.PathPrefix(prefix).Subrouter()
+	}
+}
+
+func NotFoundHandler(handler http.Handler) ServerOption {
+	return func(s *Server) {
+		s.router.NotFoundHandler = handler
+	}
+}
+
+func MethodNotAllowedHandler(handler http.Handler) ServerOption {
+	return func(s *Server) {
+		s.router.MethodNotAllowedHandler = handler
+	}
+}
+
 // Server is an HTTP server wrapper.
 type Server struct {
 	*http.Server
@@ -126,7 +165,9 @@ type Server struct {
 	timeout     time.Duration
 	filters     []FilterFunc
 	middleware  matcher.Matcher
-	dec         DecodeRequestFunc
+	decVars     DecodeRequestFunc
+	decQuery    DecodeRequestFunc
+	decBody     DecodeRequestFunc
 	enc         EncodeResponseFunc
 	ene         EncodeErrorFunc
 	strictSlash bool
@@ -140,17 +181,20 @@ func NewServer(opts ...ServerOption) *Server {
 		address:     ":0",
 		timeout:     1 * time.Second,
 		middleware:  matcher.New(),
-		dec:         DefaultRequestDecoder,
+		decVars:     DefaultRequestVars,
+		decQuery:    DefaultRequestQuery,
+		decBody:     DefaultRequestDecoder,
 		enc:         DefaultResponseEncoder,
 		ene:         DefaultErrorEncoder,
 		strictSlash: true,
+		router:      mux.NewRouter(),
 	}
+	srv.router.NotFoundHandler = http.DefaultServeMux
+	srv.router.MethodNotAllowedHandler = http.DefaultServeMux
 	for _, o := range opts {
 		o(srv)
 	}
-	srv.router = mux.NewRouter().StrictSlash(srv.strictSlash)
-	srv.router.NotFoundHandler = http.DefaultServeMux
-	srv.router.MethodNotAllowedHandler = http.DefaultServeMux
+	srv.router.StrictSlash(srv.strictSlash)
 	srv.router.Use(srv.filter())
 	srv.Server = &http.Server{
 		Handler:   FilterChain(srv.filters...)(srv.router),
@@ -170,7 +214,7 @@ func (s *Server) Use(selector string, m ...middleware.Middleware) {
 
 // WalkRoute walks the router and all its sub-routers, calling walkFn for each route in the tree.
 func (s *Server) WalkRoute(fn WalkRouteFunc) error {
-	return s.router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+	return s.router.Walk(func(route *mux.Route, _ *mux.Router, _ []*mux.Route) error {
 		methods, err := route.GetMethods()
 		if err != nil {
 			return nil // ignore no methods
@@ -184,6 +228,14 @@ func (s *Server) WalkRoute(fn WalkRouteFunc) error {
 				return err
 			}
 		}
+		return nil
+	})
+}
+
+// WalkHandle walks the router and all its sub-routers, calling walkFn for each route in the tree.
+func (s *Server) WalkHandle(handle func(method, path string, handler http.HandlerFunc)) error {
+	return s.WalkRoute(func(r RouteInfo) error {
+		handle(r.Method, r.Path, s.ServeHTTP)
 		return nil
 	})
 }
@@ -244,6 +296,7 @@ func (s *Server) filter() mux.MiddlewareFunc {
 				reqHeader:    headerCarrier(req.Header),
 				replyHeader:  headerCarrier(w.Header()),
 				request:      req,
+				response:     w,
 			}
 			if s.endpoint != nil {
 				tr.endpoint = s.endpoint.String()
@@ -290,7 +343,14 @@ func (s *Server) Start(ctx context.Context) error {
 // Stop stop the HTTP server.
 func (s *Server) Stop(ctx context.Context) error {
 	log.Info("[HTTP] server stopping")
-	return s.Shutdown(ctx)
+	err := s.Shutdown(ctx)
+	if err != nil {
+		if ctx.Err() != nil {
+			log.Warn("[HTTP] server couldn't stop gracefully in time, doing force stop")
+			err = s.Server.Close()
+		}
+	}
+	return err
 }
 
 func (s *Server) listenAndEndpoint() error {

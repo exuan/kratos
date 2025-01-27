@@ -4,8 +4,9 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/go-kratos/kratos/v2/encoding/form"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/go-kratos/kratos/v2/encoding/form"
 )
 
 var reg = regexp.MustCompile(`{[\\.\w]+}`)
@@ -19,13 +20,12 @@ func EncodeURL(pathTemplate string, msg interface{}, needQuery bool) string {
 	pathParams := make(map[string]struct{})
 	path := reg.ReplaceAllStringFunc(pathTemplate, func(in string) string {
 		// it's unreachable because the reg means that must have more than one char in {}
-		//if len(in) < 4 { //nolint:gomnd // **  explain the 4 number here :-) **
+		// if len(in) < 4 { //nolint:mnd // **  explain the 4 number here :-) **
 		//	return in
-		//}
+		// }
 		key := in[1 : len(in)-1]
-		value := queryParams.Get(key)
 		pathParams[key] = struct{}{}
-		return value
+		return queryParams.Get(key)
 	})
 	if !needQuery {
 		if v, ok := msg.(proto.Message); ok {

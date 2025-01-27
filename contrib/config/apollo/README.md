@@ -1,4 +1,4 @@
-## Apollo config centry
+## Apollo config center
 
 This module implements the `config.Source` interface in kratos based apollo config management center.
 
@@ -97,5 +97,4 @@ config := map[string]interface{}{
         }
     }
 }
-_ = config
 ```

@@ -3,12 +3,11 @@ package opensergo
 import (
 	"encoding/json"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 	"time"
-
-	"github.com/go-kratos/kratos/v2"
 
 	v1 "github.com/opensergo/opensergo-go/proto/service_contract/v1"
 	"golang.org/x/net/context"
@@ -18,6 +17,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+
+	"github.com/go-kratos/kratos/v2"
 )
 
 type Option func(*options)
@@ -96,14 +97,14 @@ func (s *OpenSergo) ReportMetadata(ctx context.Context, app kratos.AppInfo) erro
 		if err != nil {
 			return err
 		}
-		portValue, err := strconv.Atoi(port)
+		portUint64, err := strconv.ParseUint(port, 10, 32)
 		if err != nil {
 			return err
 		}
 		serviceMetadata.Protocols = append(serviceMetadata.Protocols, u.Scheme)
 		serviceMetadata.ListeningAddresses = append(serviceMetadata.ListeningAddresses, &v1.SocketAddress{
 			Address:   host,
-			PortValue: uint32(portValue),
+			PortValue: uint32(portUint64),
 		})
 	}
 	_, err = s.mdClient.ReportMetadata(ctx, &v1.ReportMetadataRequest{
@@ -186,15 +187,15 @@ func listDescriptors() (services []*v1.ServiceDescriptor, types []*v1.TypeDescri
 func HTTPPatternInfo(pattern interface{}) (method string, path string) {
 	switch p := pattern.(type) {
 	case *annotations.HttpRule_Get:
-		return "GET", p.Get
+		return http.MethodGet, p.Get
 	case *annotations.HttpRule_Post:
-		return "POST", p.Post
+		return http.MethodPost, p.Post
 	case *annotations.HttpRule_Delete:
-		return "DELETE", p.Delete
+		return http.MethodDelete, p.Delete
 	case *annotations.HttpRule_Patch:
-		return "PATCH", p.Patch
+		return http.MethodPatch, p.Patch
 	case *annotations.HttpRule_Put:
-		return "PUT", p.Put
+		return http.MethodPut, p.Put
 	case *annotations.HttpRule_Custom:
 		return p.Custom.Kind, p.Custom.Path
 	default:

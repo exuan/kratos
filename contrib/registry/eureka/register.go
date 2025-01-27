@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	_ registry.Registrar = &Registry{}
-	_ registry.Discovery = &Registry{}
+	_ registry.Registrar = (*Registry)(nil)
+	_ registry.Discovery = (*Registry)(nil)
 )
 
 type Option func(o *Registry)
@@ -54,7 +54,11 @@ func New(eurekaUrls []string, opts ...Option) (*Registry, error) {
 		o(r)
 	}
 
-	client := NewClient(eurekaUrls, WithHeartbeatInterval(r.heartbeatInterval), WithClientContext(r.ctx), WithNamespace(r.eurekaPath))
+	client := NewClient(eurekaUrls,
+		WithHeartbeatInterval(r.heartbeatInterval),
+		WithClientContext(r.ctx),
+		WithNamespace(r.eurekaPath),
+	)
 	r.api = NewAPI(r.ctx, client, r.refreshInterval)
 	return r, nil
 }

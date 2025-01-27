@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-kratos/kratos/v2/config"
-
 	"github.com/polarismesh/polaris-go"
+
+	"github.com/go-kratos/kratos/v2/config"
 )
 
 // Option is polaris config option.
@@ -80,9 +80,6 @@ func (s *source) Load() ([]*config.KeyValue, error) {
 		return nil, err
 	}
 
-	if err != nil {
-		return nil, err
-	}
 	content := configFile.GetContent()
 	k := s.options.fileName
 

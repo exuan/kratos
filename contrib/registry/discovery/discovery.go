@@ -199,7 +199,7 @@ func (d *Discovery) serverProc() {
 		apps, err := d.polls(ctx)
 		if err != nil {
 			d.switchNode()
-			if ctx.Err() == context.Canceled {
+			if errors.Is(ctx.Err(), context.Canceled) {
 				ctx = nil
 				continue
 			}
@@ -427,7 +427,7 @@ func (r *Resolve) Watch() <-chan struct{} {
 }
 
 // fetch resolver instance.
-func (r *Resolve) fetch(ctx context.Context) (ins *disInstancesInfo, ok bool) {
+func (r *Resolve) fetch(_ context.Context) (ins *disInstancesInfo, ok bool) {
 	r.d.mutex.RLock()
 	app, ok := r.d.apps[r.id]
 	r.d.mutex.RUnlock()

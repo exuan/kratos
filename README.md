@@ -39,7 +39,7 @@ Kratos is accessible, powerful, and provides tools required for large, robust ap
 
 Kratos has the most extensive and thorough [documentation](https://go-kratos.dev/en/docs/getting-started/start) and [example](https://github.com/go-kratos/examples) library of all modern web application frameworks, making it a breeze to get started with the framework.
 
-We also provide a [modern template](https://github.com/go-kratos/kratos-layout). This template should help reduce the work required to setup up modern projects.
+We also provide a [modern template](https://github.com/go-kratos/kratos-layout). This template should help reduce the work required to set up modern projects.
 
 ### Goals
 
@@ -110,5 +110,5 @@ The following project had particular influence on kratos's design.
 - [go-kit/kit](https://github.com/go-kit/kit) is a programming toolkit for building microservices in go.
 - [asim/go-micro](https://github.com/asim/go-micro) a distributed systems development framework.
 - [google/go-cloud](https://github.com/google/go-cloud) is go cloud development kit.
-- [tal-tech/go-zero](https://github.com/tal-tech/go-zero) is a web and rpc framework with lots of builtin engineering practices.
+- [zeromicro/go-zero](https://github.com/zeromicro/go-zero) is a web and rpc framework with lots of builtin engineering practices.
 - [beego/beego](https://github.com/beego/beego) is a web framework including RESTful APIs, web apps and backend services.
